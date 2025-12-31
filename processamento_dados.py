@@ -1,0 +1,119 @@
+
+import pandas as pd
+import glob
+import os
+
+# 1. Localizando os arquivos CSV na pasta
+caminho_pasta = "dados_brutos"
+arquivos_csv = glob.glob(os.path.join(caminho_pasta, "*.csv"))
+
+print(f"Encontrados {len(arquivos_csv)} arquivos. Iniciando unificação...")
+
+# 2. Lendo todos os arquivos e unindo-os em uma única tabela (DataFrame)
+lista_df = [pd.read_csv(f) for f in arquivos_csv]
+df_trips = pd.concat(lista_df, ignore_index=True)
+
+# 3. Convertendo as colunas de tempo para o formato correto do Python
+df_trips['started_at'] = pd.to_datetime(df_trips['started_at'])
+df_trips['ended_at'] = pd.to_datetime(df_trips['ended_at'])
+
+# 4. Criando a coluna 'ride_length' (Duração da viagem) [cite: 124]
+# Calculando a diferença entre o fim e o início [cite: 125]
+df_trips['ride_length'] = (df_trips['ended_at'] - df_trips['started_at']).dt.total_seconds()
+
+# 5. Criando a coluna 'day_of_week' (Dia da semana) [cite: 126]
+# O .dayofweek do Pandas retorna 0 para Segunda e 6 para Domingo
+df_trips['day_of_week'] = df_trips['started_at'].dt.dayofweek + 1
+
+# 6. Limpeza de dados (Fase de Processamento) [cite: 104, 151]
+# Removendo viagens com duração negativa ou igual a zero (erros de sistema)
+df_limpo = df_trips[df_trips['ride_length'] > 0].copy()
+
+print("\n" + "="*50)
+print("RELATÓRIO DE PROCESSAMENTO")
+print("="*50)
+print(f"Total de registros brutos: {len(df_trips)}")
+print(f"Total de registros limpos: {len(df_limpo)}")
+print(f"Registros inválidos removidos: {len(df_trips) - len(df_limpo)}")
+print("\nPrimeiras linhas da tabela final:")
+print(df_limpo[['ride_id', 'member_casual', 'ride_length', 'day_of_week']].head())
+
+# --- CONTINUAÇÃO ANÁLISE ESTATÍSTICA ---
+
+print("\n" + "="*50)
+print("ANÁLISE DESCRITIVA: MEMBROS VS CASUAIS")
+print("="*50)
+
+# 1. Calculando a média de duração da viagem (em segundos)
+# O groupby separa os dados entre membros e casuais
+media_viagem = df_limpo.groupby('member_casual')['ride_length'].mean()
+print("Duração Média da Viagem (em segundos):")
+print(media_viagem)
+
+# 2. Calculando o dia da semana mais frequente (Moda)
+# Isso nos diz em qual dia cada grupo mais usa a bicicleta
+dia_favorito = df_limpo.groupby('member_casual')['day_of_week'].agg(lambda x: x.mode().iloc[0])
+print("\nDia da Semana Favorito (1=Dom, 7=Sáb):")
+print(dia_favorito)
+
+# 3. Contando o total de viagens para cada tipo
+total_viagens = df_limpo['member_casual'].value_counts()
+print("\nVolume Total de Viagens:")
+print(total_viagens)
+
+import matplotlib.pyplot as plt
+
+# --- VISUALIZAÇÃO (SHARE) ---
+
+# 1. Preparando os dados para o gráfico
+categorias = media_viagem.index # 'casual' e 'member'
+valores = media_viagem.values / 60 # Convertendo segundos para minutos para facilitar a leitura
+
+# 2. Criando o gráfico
+plt.figure(figsize=(8, 6)) # Define o tamanho da imagem
+cores = ['orange', 'blue'] # Laranja para casual, Azul para membro (estética de marca)
+
+plt.bar(categorias, valores, color=cores)
+
+# 3. Adicionando os detalhes profissionais para o Portfólio
+plt.title('Duração Média das Viagens: Casuais vs Membros', fontsize=14)
+plt.xlabel('Tipo de Usuário', fontsize=12)
+plt.ylabel('Duração Média (Minutos)', fontsize=12)
+plt.grid(axis='y', linestyle='--', alpha=0.7) # Linhas de fundo para guiar o olho
+
+# 4. Mostrando o gráfico
+print("\nGerando gráfico... Aguarde um instante.")
+plt.show()
+
+# --- GRÁFICO 2: VOLUME DE VIAGENS POR DIA DA SEMANA ---
+
+# 1. Preparando os dados (Contagem de viagens por grupo e por dia)
+# O unstack() organiza os dados para que fiquem fáceis de plotar lado a lado
+volume_semanal = df_limpo.groupby(['day_of_week', 'member_casual']).size().unstack()
+
+# 2. Criando o gráfico de barras agrupadas
+print("\nGerando segundo gráfico... Aguarde de instante.")
+ax = volume_semanal.plot(kind='bar', figsize=(10, 6), color=['orange', 'blue'], width=0.8)
+
+# 3. Personalizando os nomes dos dias da semana no eixo X
+# Lembre-se: 1=Dom, 2=Seg, 3=Ter, 4=Qua, 5=Qui, 6=Sex, 7=Sáb
+dias_nomes = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+plt.xticks(range(7), dias_nomes, rotation=0)
+
+# 4. Detalhes
+plt.title('Volume Total de Viagens por Dia da Semana', fontsize=14, fontweight='bold')
+plt.xlabel('Dia da Semana', fontsize=12)
+plt.ylabel('Número de Viagens (em milhões)', fontsize=12)
+plt.legend(title='Tipo de Usuário')
+plt.grid(axis='y', linestyle='--', alpha=0.6)
+
+# 5. Ajustando o layout para não cortar nada
+plt.tight_layout()
+# Salvar o gráfico em alta resolução (300 dpi é qualidade de impressão)
+plt.savefig('grafico_volume_semanal.png', dpi=300, bbox_inches='tight')
+# Mude de:
+plt.savefig('grafico_volume_semanal.png', dpi=300)
+
+# Para:
+plt.savefig('analise_completa_cyclistic.png', dpi=300)
+plt.show()
