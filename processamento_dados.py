@@ -65,55 +65,34 @@ import matplotlib.pyplot as plt
 
 # --- VISUALIZAÇÃO (SHARE) ---
 
-# 1. Preparando os dados para o gráfico
-categorias = media_viagem.index # 'casual' e 'member'
-valores = media_viagem.values / 60 # Convertendo segundos para minutos para facilitar a leitura
+# --- PREPARANDO OS DADOS PARA O GRÁFICO 1 (Duração Média) ---
+resumo_duracao = df_limpo.groupby('member_casual')['ride_length'].mean() / 60 # Convertendo para minutos
+categorias = resumo_duracao.index # 'casual' e 'member'
+valores = resumo_duracao.values
 
-# 2. Criando o gráfico
-plt.figure(figsize=(8, 6)) # Define o tamanho da imagem
-cores = ['orange', 'blue'] # Laranja para casual, Azul para membro (estética de marca)
+# --- CRIANDO O COMBO DE GRÁFICOS (Duração + Volume) ---
+print("\nGerando imagem final de portfólio... Aguarde.")
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
 
-plt.bar(categorias, valores, color=cores)
+# 1. GRÁFICO DE CIMA: Duração Média
+ax1.bar(categorias, valores, color=['orange', 'blue'])
+ax1.set_title('Duração Média das Viagens (Minutos)', fontsize=14, fontweight='bold')
+ax1.set_ylabel('Minutos')
 
-# 3. Adicionando os detalhes profissionais para o Portfólio
-plt.title('Duração Média das Viagens: Casuais vs Membros', fontsize=14)
-plt.xlabel('Tipo de Usuário', fontsize=12)
-plt.ylabel('Duração Média (Minutos)', fontsize=12)
-plt.grid(axis='y', linestyle='--', alpha=0.7) # Linhas de fundo para guiar o olho
-
-# 4. Mostrando o gráfico
-print("\nGerando gráfico... Aguarde um instante.")
-plt.show()
-
-# --- GRÁFICO 2: VOLUME DE VIAGENS POR DIA DA SEMANA ---
-
-# 1. Preparando os dados (Contagem de viagens por grupo e por dia)
-# O unstack() organiza os dados para que fiquem fáceis de plotar lado a lado
+# 2. GRÁFICO DE BAIXO: Volume Semanal
+# Criando a tabela para o gráfico de barras agrupadas
 volume_semanal = df_limpo.groupby(['day_of_week', 'member_casual']).size().unstack()
+volume_semanal.plot(kind='bar', ax=ax2, color=['orange', 'blue'], width=0.8)
+ax2.set_title('Volume Total de Viagens por Dia da Semana', fontsize=14, fontweight='bold')
+ax2.set_ylabel('Número de Viagens (em milhões)')
+ax2.set_xticklabels(['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'], rotation=0)
+ax2.legend(title='Tipo de Usuário')
 
-# 2. Criando o gráfico de barras agrupadas
-print("\nGerando segundo gráfico... Aguarde de instante.")
-ax = volume_semanal.plot(kind='bar', figsize=(10, 6), color=['orange', 'blue'], width=0.8)
+# Ajustes de layout
+plt.tight_layout(pad=5.0)
 
-# 3. Personalizando os nomes dos dias da semana no eixo X
-# Lembre-se: 1=Dom, 2=Seg, 3=Ter, 4=Qua, 5=Qui, 6=Sex, 7=Sáb
-dias_nomes = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-plt.xticks(range(7), dias_nomes, rotation=0)
+# SALVAMENTO FINAL
+plt.savefig('analise_completa_cyclistic.png', dpi=300, bbox_inches='tight')
+print("Sucesso! Imagem 'analise_completa_cyclistic.png' salva na pasta do projeto.")
 
-# 4. Detalhes
-plt.title('Volume Total de Viagens por Dia da Semana', fontsize=14, fontweight='bold')
-plt.xlabel('Dia da Semana', fontsize=12)
-plt.ylabel('Número de Viagens (em milhões)', fontsize=12)
-plt.legend(title='Tipo de Usuário')
-plt.grid(axis='y', linestyle='--', alpha=0.6)
-
-# 5. Ajustando o layout para não cortar nada
-plt.tight_layout()
-# Salvar o gráfico em alta resolução (300 dpi é qualidade de impressão)
-plt.savefig('grafico_volume_semanal.png', dpi=300, bbox_inches='tight')
-# Mude de:
-plt.savefig('grafico_volume_semanal.png', dpi=300)
-
-# Para:
-plt.savefig('analise_completa_cyclistic.png', dpi=300)
 plt.show()
